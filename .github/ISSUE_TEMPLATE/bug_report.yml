@@ -59,12 +59,12 @@ body:
       description: |
         **IMPORTANT:** Please attach your installation log file. This helps us diagnose issues quickly.
         
-        The log is saved to: `%TEMP%\GalaxyBookEnabler_YYYYMMDD_HHMMSS.log`
+        The log is saved to: `%TEMP%\GalaxyBookNabu_YYYYMMDD_HHMMSS.log`
         
         You can find it by:
         1. Press Win+R
         2. Type: `%TEMP%`
-        3. Look for the newest `GalaxyBookEnabler_*.log` file
+        3. Look for the newest `GalaxyBookNabu_*.log` file
         4. Drag and drop it here or paste its contents
         
         **If you ran the script via `irm | iex`, the log should still be saved automatically.**

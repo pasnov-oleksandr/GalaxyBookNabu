@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Copyright (c) 2023-2026 Glen Muthoka Mutinda
+# Modified (c) 2026 pasnov-oleksandr (Xiaomi Pad 5 nabu ARM64 port)
 #
 # Bumps every version reference in the repo to the given version.
 # Usage: bash .github/scripts/bump-version.sh <version> [repo-dir]
 #   RELEASE_DATE=YYYY-MM-DD overrides today's date (UTC).
 #
 # Updates:
-#   Install-GalaxyBookEnabler.ps1  $SCRIPT_VERSION and the .NOTES "Version :" line
+#   Install-GalaxyBookNabu.ps1  $SCRIPT_VERSION and the .NOTES "Version :" line
 #   README.md                      version badge
 #   PACKAGES.md                    "Last Updated" line
 #   CHANGELOG.md                   [Unreleased] -> [<version>] - <date>, compare links
@@ -18,7 +19,7 @@ VERSION="${1:?usage: bump-version.sh <version> [repo-dir]}"
 ROOT="${2:-.}"
 DATE="${RELEASE_DATE:-$(date -u +%Y-%m-%d)}"
 LONG_DATE="$(date -u -d "$DATE" '+%B %-d, %Y')"
-REPO_URL="https://github.com/Bananz0/GalaxyBookEnabler"
+REPO_URL="https://github.com/pasnov-oleksandr/GalaxyBookNabu"
 
 PRERELEASE=false
 [[ "$VERSION" == *-* ]] && PRERELEASE=true
@@ -31,12 +32,12 @@ fail() {
 }
 
 # --- Installer ---------------------------------------------------------------
-grep -q '^\$SCRIPT_VERSION = "' Install-GalaxyBookEnabler.ps1 || fail 'No $SCRIPT_VERSION line in Install-GalaxyBookEnabler.ps1'
-sed -i -E 's/^\$SCRIPT_VERSION = ".*"/$SCRIPT_VERSION = "'"$VERSION"'"/' Install-GalaxyBookEnabler.ps1
+grep -q '^\$SCRIPT_VERSION = "' Install-GalaxyBookNabu.ps1 || fail 'No $SCRIPT_VERSION line in Install-GalaxyBookNabu.ps1'
+sed -i -E 's/^\$SCRIPT_VERSION = ".*"/$SCRIPT_VERSION = "'"$VERSION"'"/' Install-GalaxyBookNabu.ps1
 
 # First "Version : x" line is the comment-based help .NOTES block
-grep -qE '^\s*Version\s*:' Install-GalaxyBookEnabler.ps1 || fail 'No .NOTES "Version :" line in Install-GalaxyBookEnabler.ps1'
-sed -i -E '0,/^(\s*Version\s*:\s*).*/s//\1'"$VERSION"'/' Install-GalaxyBookEnabler.ps1
+grep -qE '^\s*Version\s*:' Install-GalaxyBookNabu.ps1 || fail 'No .NOTES "Version :" line in Install-GalaxyBookNabu.ps1'
+sed -i -E '0,/^(\s*Version\s*:\s*).*/s//\1'"$VERSION"'/' Install-GalaxyBookNabu.ps1
 
 # --- README badge (shields.io needs "-" escaped as "--") ---------------------
 BADGE="${VERSION//-/--}"

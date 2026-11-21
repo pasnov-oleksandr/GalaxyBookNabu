@@ -47,7 +47,7 @@ Disables blank issues and provides helpful links:
 
 The script automatically generates diagnostic logs at:
 ```
-%TEMP%\GalaxyBookEnabler_YYYYMMDD_HHMMSS.log
+%TEMP%\GalaxyBookNabu_YYYYMMDD_HHMMSS.log
 ```
 
 **Log Contents:**

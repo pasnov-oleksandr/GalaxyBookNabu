@@ -1,15 +1,16 @@
 # Copyright (c) 2023-2026 Glen Muthoka Mutinda
+# Modified (c) 2026 pasnov-oleksandr (Xiaomi Pad 5 nabu ARM64 port)
 name: Continuous Regression Suite
 
 on:
   push:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - 'tests/**'
       - '.github/workflows/**'
   pull_request:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - 'tests/**'
       - '.github/workflows/**'
   schedule:
@@ -65,7 +66,7 @@ jobs:
 
             $stdoutPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stdout.log"
             $stderrPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stderr.log"
-            $invocationArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\Install-GalaxyBookEnabler.ps1') + $Args
+            $invocationArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\Install-GalaxyBookNabu.ps1') + $Args
             $escapedInvocationArgs = ConvertTo-StartProcessArguments -Arguments $invocationArgs
 
             Write-Host "Running '$Name' with timeout ${TimeoutSeconds}s..."
@@ -109,14 +110,14 @@ jobs:
             }
           }
 
-          $legacyRoot = Join-Path $env:USERPROFILE 'GalaxyBookEnablerScript'
+          $legacyRoot = Join-Path $env:USERPROFILE 'GalaxyBookNabuScript'
           $legacyBatchPath = Join-Path $legacyRoot 'QS.bat'
 
           # Read the default spoof family from the installer so this doesn't go stale when the default model changes
-          $installerSource = Get-Content -LiteralPath '.\Install-GalaxyBookEnabler.ps1' -Raw -Encoding utf8
+          $installerSource = Get-Content -LiteralPath '.\Install-GalaxyBookNabu.ps1' -Raw -Encoding utf8
           $defaultFamilyMatch = [regex]::Match($installerSource, '(?m)^\$DefaultBiosFamilyLabel\s*=\s*''([^'']+)''')
           if (-not $defaultFamilyMatch.Success) {
-            throw 'Could not find $DefaultBiosFamilyLabel in Install-GalaxyBookEnabler.ps1'
+            throw 'Could not find $DefaultBiosFamilyLabel in Install-GalaxyBookNabu.ps1'
           }
           $defaultFamilyLabel = $defaultFamilyMatch.Groups[1].Value
 
@@ -255,7 +256,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          [void]([System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\Install-GalaxyBookEnabler.ps1", [ref]$null, [ref]$null))
+          [void]([System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\Install-GalaxyBookNabu.ps1", [ref]$null, [ref]$null))
 
       - name: Install test modules
         shell: pwsh
@@ -278,7 +279,7 @@ jobs:
             'PSUseSingularNouns',
             'PSUseBOMForUnicodeEncodedFile'
           )
-          $issues = Invoke-ScriptAnalyzer -Path .\Install-GalaxyBookEnabler.ps1 -Severity Warning,Error -ExcludeRule $excludedRules
+          $issues = Invoke-ScriptAnalyzer -Path .\Install-GalaxyBookNabu.ps1 -Severity Warning,Error -ExcludeRule $excludedRules
           if ($issues) {
             $issues | Select-Object RuleName, Severity, Line, Message | Format-Table -AutoSize
             throw "PSScriptAnalyzer found $($issues.Count) issues."

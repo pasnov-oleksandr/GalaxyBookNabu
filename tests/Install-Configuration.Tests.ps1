@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-$scriptPath = Join-Path $PSScriptRoot '..\Install-GalaxyBookEnabler.ps1'
+$scriptPath = Join-Path $PSScriptRoot '..\Install-GalaxyBookNabu.ps1'
 
 function Invoke-ConfigurationMode {
     param(
@@ -96,7 +96,7 @@ function Get-PlistValueByPath {
     return Get-NextNodeAfterKey -Dict $current -KeyName $Key
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 configuration mode' {
+Describe 'Install-GalaxyBookNabu.ps1 configuration mode' {
     It 'accepts family selections and resolves a valid concrete model' {
         $result = Invoke-ConfigurationMode -Selector Book4Pro -CountryCode US
 
@@ -306,7 +306,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 configuration mode' {
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 autonomous package resolution' {
+Describe 'Install-GalaxyBookNabu.ps1 autonomous package resolution' {
     It 'resolves the core package profile in test mode' {
         $result = Invoke-AutonomousScript -Arguments @(
             '-TestMode',
@@ -417,7 +417,7 @@ function Get-InstallerFunctionScript {
     return [scriptblock]::Create(($functions | ForEach-Object { $_.Extent.Text }) -join [Environment]::NewLine)
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
+Describe 'Install-GalaxyBookNabu.ps1 non-ASCII user profile paths (#127)' {
     # "Žemaitė Ąžuolė" - a Lithuanian-style user folder with a space and non-ASCII characters
     $nonAsciiName = "$([char]0x17D)emait$([char]0x117) $([char]0x104)$([char]0x17E)uol$([char]0x117)"
 
@@ -440,7 +440,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
     It 'writes a UTF-8 spoof batch that round-trips from a non-ASCII folder' {
         . (Get-InstallerFunctionScript -Name 'New-RegistrySpoofBatch', 'Get-LegacyBiosValues')
 
-        $installPath = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-enabler"
+        $installPath = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-nabu"
         New-Item -Path $installPath -ItemType Directory -Force | Out-Null
         $batchPath = Join-Path $installPath 'GalaxyBookSpoof.bat'
 
@@ -480,7 +480,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
     }
 
     It 'runs a batch file from a non-ASCII folder with the scheduled task quoting' {
-        $batchDir = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-enabler"
+        $batchDir = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-nabu"
         New-Item -Path $batchDir -ItemType Directory -Force | Out-Null
         $batchPath = Join-Path $batchDir 'GalaxyBookSpoof.bat'
         $markerPath = Join-Path $batchDir 'ran.txt'
@@ -488,7 +488,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
         $batchContent = "@echo off`r`nchcp 65001 >nul`r`necho ok> `"%~dp0ran.txt`"`r`n"
         [System.IO.File]::WriteAllText($batchPath, $batchContent, [System.Text.UTF8Encoding]::new($false))
 
-        # Same command line the GalaxyBookEnabler scheduled task uses
+        # Same command line the GalaxyBookNabu scheduled task uses
         $cmdPath = Join-Path $env:SystemRoot 'System32\cmd.exe'
         $process = Start-Process -FilePath $cmdPath -ArgumentList "/d /c `"`"$batchPath`"`"" -Wait -PassThru -WindowStyle Hidden
 
@@ -499,7 +499,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
     It 'writes a Multi Control init script that parses from a non-ASCII folder' {
         . (Get-InstallerFunctionScript -Name 'New-MultiControlInitScript')
 
-        $installPath = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-enabler"
+        $installPath = Join-Path $TestDrive "$nonAsciiName\.galaxy-book-nabu"
         New-Item -Path $installPath -ItemType Directory -Force | Out-Null
         $initScriptPath = Join-Path $installPath 'Init-SamsungMultiControlOnLogin.ps1'
 
@@ -530,7 +530,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 non-ASCII user profile paths (#127)' {
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 Store package install fallback' {
+Describe 'Install-GalaxyBookNabu.ps1 Store package install fallback' {
     function Start-Sleep { }
     function Write-GbeLog {
         param([string]$Message, [string]$Level)
@@ -610,7 +610,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 Store package install fallback' {
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 PowerShell host selection (#124)' {
+Describe 'Install-GalaxyBookNabu.ps1 PowerShell host selection (#124)' {
     It 'skips Microsoft Store PowerShell when picking pwsh.exe' {
         . (Get-InstallerFunctionScript -Name 'Get-ClassicPwshPath')
 
@@ -636,8 +636,8 @@ Describe 'Install-GalaxyBookEnabler.ps1 PowerShell host selection (#124)' {
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 installation health check' {
-    It 'looks for the config in the .galaxy-book-enabler folder by default' {
+Describe 'Install-GalaxyBookNabu.ps1 installation health check' {
+    It 'looks for the config in the .galaxy-book-nabu folder by default' {
         . (Get-InstallerFunctionScript -Name 'Test-InstallationHealth')
 
         $command = Get-Command Test-InstallationHealth
@@ -646,14 +646,14 @@ Describe 'Install-GalaxyBookEnabler.ps1 installation health check' {
             ForEach-Object { $_.DefaultValue.Extent.Text }
 
         $defaultValue | Should Not BeNullOrEmpty
-        $defaultValue.Contains('.galaxy-book-enabler\gbe-config.json') | Should Be $true
+        $defaultValue.Contains('.galaxy-book-nabu\gbe-config.json') | Should Be $true
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 Samsung Settings registration (#94, #51)' {
+Describe 'Install-GalaxyBookNabu.ps1 Samsung Settings registration (#94, #51)' {
     function Write-GbeLog { }
 
-    $testRoot = "HKCU:\Software\GalaxyBookEnablerTests\$([guid]::NewGuid().ToString('N'))"
+    $testRoot = "HKCU:\Software\GalaxyBookNabuTests\$([guid]::NewGuid().ToString('N'))"
     $servicesRoot = Join-Path $testRoot 'Services'
     $settingsKey = Join-Path $testRoot 'SamsungSettings'
     $biosKey = Join-Path $testRoot 'BIOS'
@@ -840,7 +840,7 @@ Describe 'Install-GalaxyBookEnabler.ps1 Samsung Settings registration (#94, #51)
     }
 }
 
-Describe 'Install-GalaxyBookEnabler.ps1 winget result handling (Qodo review)' {
+Describe 'Install-GalaxyBookNabu.ps1 winget result handling (Qodo review)' {
     function Start-Sleep { }
     function Write-GbeLog { }
 

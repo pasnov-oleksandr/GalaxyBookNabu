@@ -1,14 +1,15 @@
 # Copyright (c) 2023-2026 Glen Muthoka Mutinda
+# Modified (c) 2026 pasnov-oleksandr (Xiaomi Pad 5 nabu ARM64 port)
 name: Installer Smoke Test
 
 on:
   push:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - '.github/workflows/installer-smoke.yml'
   pull_request:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - '.github/workflows/installer-smoke.yml'
 
 jobs:
@@ -99,7 +100,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Set-ExecutionPolicy Bypass -Scope Process -Force
-          .\Install-GalaxyBookEnabler.ps1 `
+          .\Install-GalaxyBookNabu.ps1 `
             -TestMode `
             -FullyAutonomous `
             -AutonomousModel 960XGL `
@@ -115,16 +116,16 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $errors = @()
 
-          $task = Get-ScheduledTask -TaskName 'GalaxyBookEnabler' -ErrorAction SilentlyContinue
-          if ($task) { $errors += 'Scheduled task GalaxyBookEnabler should NOT exist after TestMode run' }
+          $task = Get-ScheduledTask -TaskName 'GalaxyBookNabu' -ErrorAction SilentlyContinue
+          if ($task) { $errors += 'Scheduled task GalaxyBookNabu should NOT exist after TestMode run' }
 
-          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookEnabler-MultiControlInit' -ErrorAction SilentlyContinue
-          if ($multiControlTask) { $errors += 'Scheduled task GalaxyBookEnabler-MultiControlInit should NOT exist after TestMode run' }
+          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookNabu-MultiControlInit' -ErrorAction SilentlyContinue
+          if ($multiControlTask) { $errors += 'Scheduled task GalaxyBookNabu-MultiControlInit should NOT exist after TestMode run' }
 
-          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\Init-SamsungMultiControlOnLogin.ps1'
+          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-nabu\Init-SamsungMultiControlOnLogin.ps1'
           if (Test-Path $multiControlScript) { $errors += 'Init-SamsungMultiControlOnLogin.ps1 should NOT exist after TestMode run' }
 
-          $batchScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\GalaxyBookSpoof.bat'
+          $batchScript = Join-Path $env:USERPROFILE '.galaxy-book-nabu\GalaxyBookSpoof.bat'
           if (Test-Path $batchScript) { $errors += 'GalaxyBookSpoof.bat should NOT exist after TestMode run' }
 
           if ($errors.Count -gt 0) {
@@ -144,7 +145,7 @@ jobs:
           $wingetAvailable = '${{ steps.winget-bootstrap.outputs.available }}' -eq 'true'
           $packageProfile = if ($wingetAvailable) { 'Core' } else { 'Skip' }
 
-          .\Install-GalaxyBookEnabler.ps1 `
+          .\Install-GalaxyBookNabu.ps1 `
             -FullyAutonomous `
             -AutonomousModel 960XGL `
             -AutonomousPackageProfile $packageProfile `
@@ -164,20 +165,20 @@ jobs:
           $expectedModel = '960XGL'
           $wingetAvailable = '${{ steps.winget-bootstrap.outputs.available }}' -eq 'true'
 
-          $task = Get-ScheduledTask -TaskName 'GalaxyBookEnabler' -ErrorAction SilentlyContinue
-          if (-not $task) { $errors += 'Scheduled task GalaxyBookEnabler missing' }
+          $task = Get-ScheduledTask -TaskName 'GalaxyBookNabu' -ErrorAction SilentlyContinue
+          if (-not $task) { $errors += 'Scheduled task GalaxyBookNabu missing' }
 
-          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookEnabler-MultiControlInit' -ErrorAction SilentlyContinue
+          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookNabu-MultiControlInit' -ErrorAction SilentlyContinue
           if (-not $multiControlTask) {
-            $errors += 'Scheduled task GalaxyBookEnabler-MultiControlInit missing'
+            $errors += 'Scheduled task GalaxyBookNabu-MultiControlInit missing'
           }
           else {
             $startupTrigger = $multiControlTask.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskBootTrigger' } | Select-Object -First 1
-            if (-not $startupTrigger) { $errors += 'GalaxyBookEnabler-MultiControlInit missing startup trigger' }
-            elseif ($startupTrigger.Delay -ne 'PT5M') { $errors += "GalaxyBookEnabler-MultiControlInit delay mismatch ($($startupTrigger.Delay))" }
+            if (-not $startupTrigger) { $errors += 'GalaxyBookNabu-MultiControlInit missing startup trigger' }
+            elseif ($startupTrigger.Delay -ne 'PT5M') { $errors += "GalaxyBookNabu-MultiControlInit delay mismatch ($($startupTrigger.Delay))" }
           }
 
-          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\Init-SamsungMultiControlOnLogin.ps1'
+          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-nabu\Init-SamsungMultiControlOnLogin.ps1'
           if (-not (Test-Path $multiControlScript)) { $errors += 'Init-SamsungMultiControlOnLogin.ps1 missing from install directory' }
 
           $bios = Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\BIOS' -ErrorAction SilentlyContinue
@@ -285,7 +286,7 @@ jobs:
 
             $stdoutPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stdout.log"
             $stderrPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stderr.log"
-            $invocationArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\Install-GalaxyBookEnabler.ps1') + $Args
+            $invocationArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\Install-GalaxyBookNabu.ps1') + $Args
             $escapedInvocationArgs = ConvertTo-StartProcessArguments -Arguments $invocationArgs
 
             Write-Host "Running '$Name' with timeout ${TimeoutSeconds}s..."

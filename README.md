@@ -371,7 +371,7 @@ Write the generated values straight into an existing `config.plist`:
 2. **Model Selection**
    - Choose a Galaxy Book generation and model profile
 3. **File Setup**
-   - Creates `%USERPROFILE%\.galaxy-book-enabler`
+   - Creates `%USERPROFILE%\.galaxy-book-nabu`
    - Generates `GalaxyBookSpoof.bat` (`EnclosureType = 0x03`) and `Init-SamsungMultiControlOnLogin.ps1`
 4. **Startup Task Creation**
    - Creates scheduled task `GalaxyBookNabu` (runs `GalaxyBookSpoof.bat` as `SYSTEM` at startup)
@@ -435,7 +435,7 @@ zip -j AllInNabu.zip release/SysIdStub.dll
   ```
 - Run recovery script manually:
   ```powershell
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.galaxy-book-enabler\Init-SamsungMultiControlOnLogin.ps1"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\.galaxy-book-nabu\Init-SamsungMultiControlOnLogin.ps1"
   ```
 
 ### Quick Share Not Working
@@ -480,7 +480,7 @@ A: Yes. Xiaomi Pad 5 (`nabu`) supports dual-booting a full Samsung One UI 8.0 An
 ```powershell
 Unregister-ScheduledTask -TaskName "GalaxyBookNabu" -Confirm:$false -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName "GalaxyBookNabu-MultiControlInit" -Confirm:$false -ErrorAction SilentlyContinue
-Remove-Item "$env:USERPROFILE\.galaxy-book-enabler" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:USERPROFILE\.galaxy-book-nabu" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "C:\ProgramData\SamsungAccount_Nabu", "C:\ProgramData\SamsungContinuity_Nabu", "C:\ProgramData\SamsungQuickShare_Nabu" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore" -Name "AutoDownload" -ErrorAction SilentlyContinue
 Restart-Computer
@@ -507,7 +507,7 @@ This project is licensed under the MIT License — see the `LICENSE` file for de
 - Enhanced and maintained by `@Bananz0`
 - Desktop Enclosure (`0x03`) & `FamilyMDE` fix from PR #100 / `Chiragsd13/GalaxyConnectEnabler`
 - Bluetooth device removal by `@m-a-x-s-e-e-l-i-g` / `@RS-DU34` (`powerBTremover`)
-- Xiaomi Pad 5 (`nabu`) ARM64 port (`SysIdStub.dll`, Qualcomm `QSBLE`/`WifiServiceHandler` ARM64 patches, CIL `HasSupportedBluetooth` patch)
+- Xiaomi Pad 5 (`nabu`) ARM64 port by `@pasnov-oleksandr` (`SysIdStub.dll`, Qualcomm `QSBLE`/`WifiServiceHandler` ARM64 patches, CIL `HasSupportedBluetooth` patch)
 
 ## Disclaimer
 
@@ -515,3 +515,5 @@ This project is licensed under the MIT License — see the `LICENSE` file for de
 - Not affiliated with or endorsed by Samsung Electronics or Xiaomi
 - Use at your own risk
 - Samsung may update their apps to detect or block this method
+
+> **Prerequisite (Windows 11 ARM64 / Xiaomi Pad 5 `nabu`):** Enable **Developer Mode** (`Settings -> System -> For developers -> Developer Mode`) before running `Install-GalaxyBookNabu.ps1` so local ARM64 AppX manifests (`AllInNabu.zip`) can be registered.

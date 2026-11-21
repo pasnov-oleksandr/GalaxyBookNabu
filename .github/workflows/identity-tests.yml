@@ -1,14 +1,15 @@
 # Copyright (c) 2023-2026 Glen Muthoka Mutinda
+# Modified (c) 2026 pasnov-oleksandr (Xiaomi Pad 5 nabu ARM64 port)
 name: Identity Tests
 on:
   push:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - 'tests/**'
       - '.github/workflows/identity-tests.yml'
   pull_request:
     paths:
-      - 'Install-GalaxyBookEnabler.ps1'
+      - 'Install-GalaxyBookNabu.ps1'
       - 'tests/**'
       - '.github/workflows/identity-tests.yml'
 
@@ -23,7 +24,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          [void]([System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\Install-GalaxyBookEnabler.ps1", [ref]$null, [ref]$null))
+          [void]([System.Management.Automation.Language.Parser]::ParseFile("$env:GITHUB_WORKSPACE\Install-GalaxyBookNabu.ps1", [ref]$null, [ref]$null))
 
       - name: Install test modules
         shell: pwsh
@@ -46,7 +47,7 @@ jobs:
             'PSUseSingularNouns',
             'PSUseBOMForUnicodeEncodedFile'
           )
-          $issues = Invoke-ScriptAnalyzer -Path .\Install-GalaxyBookEnabler.ps1 -Severity Warning,Error -ExcludeRule $excludedRules
+          $issues = Invoke-ScriptAnalyzer -Path .\Install-GalaxyBookNabu.ps1 -Severity Warning,Error -ExcludeRule $excludedRules
           if ($issues) {
             $issues | Select-Object RuleName, Severity, Line, Message | Format-Table -AutoSize
             throw "PSScriptAnalyzer found $($issues.Count) issues."

@@ -1,4 +1,5 @@
 # Copyright (c) 2023-2026 Glen Muthoka Mutinda
+# Modified (c) 2026 pasnov-oleksandr (Xiaomi Pad 5 nabu ARM64 port)
 name: Release
 
 on:
@@ -82,9 +83,9 @@ jobs:
 
             ---
             ```powershell
-            irm https://raw.githubusercontent.com/Bananz0/GalaxyBookEnabler/main/Install-GalaxyBookEnabler.ps1 | iex
+            irm https://raw.githubusercontent.com/pasnov-oleksandr/GalaxyBookNabu/main/Install-GalaxyBookNabu.ps1 | iex
             ```
-          files: Install-GalaxyBookEnabler.ps1
+          files: Install-GalaxyBookNabu.ps1
 
       # Apply the same bump on top of the latest main (not the tag commit), so the push
       # is always a fast-forward even if main moved after the tag. Prereleases leave main alone.
