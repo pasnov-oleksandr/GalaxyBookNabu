@@ -1,0 +1,345 @@
+# Copyright (c) 2023-2026 Glen Muthoka Mutinda
+name: Installer Smoke Test
+
+on:
+  push:
+    paths:
+      - 'Install-GalaxyBookEnabler.ps1'
+      - '.github/workflows/installer-smoke.yml'
+  pull_request:
+    paths:
+      - 'Install-GalaxyBookEnabler.ps1'
+      - '.github/workflows/installer-smoke.yml'
+
+jobs:
+  installer-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Ensure winget availability
+        id: winget-bootstrap
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PATH = "$env:LOCALAPPDATA\Microsoft\WindowsApps;$env:PATH"
+
+          function Test-WingetReady {
+            $winget = Get-Command winget -ErrorAction SilentlyContinue
+            if (-not $winget) { return $false }
+
+            try {
+              & $winget.Source --version | Out-Null
+            }
+            catch {
+              return $false
+            }
+
+            try {
+              & $winget.Source source list --disable-interactivity | Out-Null
+            }
+            catch {
+              # Source initialization can fail transiently; command availability is the hard gate.
+            }
+
+            return $true
+          }
+
+          if (-not (Test-WingetReady)) {
+            Write-Host 'winget not immediately available. Attempting Desktop App Installer registration...'
+            $desktopAppInstaller = Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller' -AllUsers -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($desktopAppInstaller -and $desktopAppInstaller.InstallLocation) {
+              $manifestPath = Join-Path $desktopAppInstaller.InstallLocation 'AppXManifest.xml'
+              if (Test-Path $manifestPath) {
+                Add-AppxPackage -DisableDevelopmentMode -Register $manifestPath -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+          $wingetReady = $false
+          for ($attempt = 1; $attempt -le 5; $attempt++) {
+            if (Test-WingetReady) {
+              $wingetReady = $true
+              break
+            }
+
+            Write-Host "winget check attempt $attempt failed; retrying in 5 seconds..."
+            Start-Sleep -Seconds 5
+          }
+
+          "available=$($wingetReady.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+          if (-not $wingetReady) {
+            Write-Warning 'winget is unavailable after retries. Winget-dependent install checks will be skipped.'
+            return
+          }
+
+          $wingetUpgradeOutput = @(& winget upgrade winget --accept-package-agreements --accept-source-agreements --disable-interactivity 2>&1)
+          $wingetUpgradeExitCode = $LASTEXITCODE
+          if ($wingetUpgradeOutput.Count -gt 0) {
+            $wingetUpgradeOutput | ForEach-Object { Write-Host $_ }
+          }
+
+          if ($wingetUpgradeExitCode -ne 0) {
+            $wingetUpgradeSummary = ($wingetUpgradeOutput | Out-String)
+            if ($wingetUpgradeSummary -match 'Successfully installed' -or $wingetUpgradeSummary -match 'Restart the application to complete the upgrade') {
+              Write-Warning "winget self-upgrade reported success but exited with code $wingetUpgradeExitCode; continuing."
+            }
+            else {
+              Write-Warning "winget self-upgrade failed with exit code $wingetUpgradeExitCode; continuing with the existing winget installation."
+            }
+
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Run installer (test-mode autonomous)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          .\Install-GalaxyBookEnabler.ps1 `
+            -TestMode `
+            -FullyAutonomous `
+            -AutonomousModel 960XGL `
+            -AutonomousPackageProfile Skip `
+            -AutonomousInstallSsse:$false `
+            -AutonomousConfirmPackages:$false `
+            -DebugOutput `
+            -LogDirectory "C:\GalaxyBook\Logs"
+
+      - name: Verify TestMode (no changes)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $errors = @()
+
+          $task = Get-ScheduledTask -TaskName 'GalaxyBookEnabler' -ErrorAction SilentlyContinue
+          if ($task) { $errors += 'Scheduled task GalaxyBookEnabler should NOT exist after TestMode run' }
+
+          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookEnabler-MultiControlInit' -ErrorAction SilentlyContinue
+          if ($multiControlTask) { $errors += 'Scheduled task GalaxyBookEnabler-MultiControlInit should NOT exist after TestMode run' }
+
+          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\Init-SamsungMultiControlOnLogin.ps1'
+          if (Test-Path $multiControlScript) { $errors += 'Init-SamsungMultiControlOnLogin.ps1 should NOT exist after TestMode run' }
+
+          $batchScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\GalaxyBookSpoof.bat'
+          if (Test-Path $batchScript) { $errors += 'GalaxyBookSpoof.bat should NOT exist after TestMode run' }
+
+          if ($errors.Count -gt 0) {
+            Write-Host 'TestMode verification errors:'
+            $errors | ForEach-Object { Write-Host "- $_" }
+            exit 1
+          }
+
+          Write-Host 'TestMode verification passed.'
+
+      - name: Run installer (autonomous)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+
+          $wingetAvailable = '${{ steps.winget-bootstrap.outputs.available }}' -eq 'true'
+          $packageProfile = if ($wingetAvailable) { 'Core' } else { 'Skip' }
+
+          .\Install-GalaxyBookEnabler.ps1 `
+            -FullyAutonomous `
+            -AutonomousModel 960XGL `
+            -AutonomousPackageProfile $packageProfile `
+            -AutonomousInstallSsse:$true `
+            -AutonomousSsseStrategy Dual `
+            -AutonomousConfirmPackages:$wingetAvailable `
+            -AutonomousCreateAiSelectShortcut:$false `
+            -DebugOutput `
+            -LogDirectory "C:\GalaxyBook\Logs"
+
+      - name: Verify installation (best effort)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $errors = @()
+          $os = [System.Environment]::OSVersion.Version
+          $expectedModel = '960XGL'
+          $wingetAvailable = '${{ steps.winget-bootstrap.outputs.available }}' -eq 'true'
+
+          $task = Get-ScheduledTask -TaskName 'GalaxyBookEnabler' -ErrorAction SilentlyContinue
+          if (-not $task) { $errors += 'Scheduled task GalaxyBookEnabler missing' }
+
+          $multiControlTask = Get-ScheduledTask -TaskName 'GalaxyBookEnabler-MultiControlInit' -ErrorAction SilentlyContinue
+          if (-not $multiControlTask) {
+            $errors += 'Scheduled task GalaxyBookEnabler-MultiControlInit missing'
+          }
+          else {
+            $startupTrigger = $multiControlTask.Triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskBootTrigger' } | Select-Object -First 1
+            if (-not $startupTrigger) { $errors += 'GalaxyBookEnabler-MultiControlInit missing startup trigger' }
+            elseif ($startupTrigger.Delay -ne 'PT5M') { $errors += "GalaxyBookEnabler-MultiControlInit delay mismatch ($($startupTrigger.Delay))" }
+          }
+
+          $multiControlScript = Join-Path $env:USERPROFILE '.galaxy-book-enabler\Init-SamsungMultiControlOnLogin.ps1'
+          if (-not (Test-Path $multiControlScript)) { $errors += 'Init-SamsungMultiControlOnLogin.ps1 missing from install directory' }
+
+          $bios = Get-ItemProperty 'HKLM:\HARDWARE\DESCRIPTION\System\BIOS' -ErrorAction SilentlyContinue
+          $sysinfo = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SystemInformation' -ErrorAction SilentlyContinue
+          if (-not $bios -or $bios.SystemManufacturer -notlike '*SAMSUNG*') { $errors += 'BIOS SystemManufacturer not Samsung' }
+          if (-not $sysinfo) {
+            $errors += 'SystemInformation registry key missing'
+          }
+          else {
+            $actualModel = [string]$sysinfo.SystemProductName
+            if ([string]::IsNullOrWhiteSpace($actualModel)) {
+              $errors += 'SystemProductName missing from SystemInformation'
+            }
+            elseif ($actualModel -ne $expectedModel) {
+              $errors += "SystemProductName mismatch (expected $expectedModel, got $actualModel)"
+            }
+          }
+
+          if ($wingetAvailable) {
+            $store = Get-AppxPackage -Name 'Microsoft.WindowsStore' -ErrorAction SilentlyContinue
+            if ($store) {
+              $account = Get-AppxPackage -Name 'SAMSUNGELECTRONICSCO.LTD.SamsungAccount*' -ErrorAction SilentlyContinue
+              if (-not $account) { $errors += 'Samsung Account app not detected' }
+            }
+          }
+          else {
+            Write-Host 'Skipping Samsung Account verification because winget was unavailable in bootstrap step.'
+          }
+
+          if ($os.Build -ge 22000) {
+            $ssseExe = 'C:\GalaxyBook\SamsungSystemSupportEngine.exe'
+            if (-not (Test-Path $ssseExe)) { $errors += 'SSSE executable missing' }
+
+            $ssseServiceExe = 'C:\GalaxyBook\SamsungSystemSupportService.exe'
+            if (-not (Test-Path $ssseServiceExe)) { $errors += 'SSSE service executable missing' }
+
+            $gbeServices = @(Get-Service -Name 'GBeSupportService*' -ErrorAction SilentlyContinue)
+            if (-not $gbeServices -or $gbeServices.Count -eq 0) {
+              $errors += 'GBe support service missing (GBeSupportService*)'
+            }
+            else {
+              $runningService = $gbeServices | Where-Object { $_.Status -eq 'Running' } | Select-Object -First 1
+              if (-not $runningService) {
+                Write-Host 'Warning: No GBe support service is running; continuing (best effort check).'
+              }
+
+              $pathMatches = $false
+              foreach ($service in $gbeServices) {
+                $svcInfo = Get-CimInstance Win32_Service -Filter "Name='$($service.Name)'" -ErrorAction SilentlyContinue
+                if ($svcInfo -and $svcInfo.PathName -match 'SamsungSystemSupportService\.exe') {
+                  $pathMatches = $true
+                  break
+                }
+              }
+
+              if (-not $pathMatches) {
+                $errors += 'GBe support service path not pointing to SamsungSystemSupportService.exe'
+              }
+            }
+          }
+          else {
+            Write-Host 'Skipping SSSE checks (requires Windows 11 build 22000+).'
+          }
+
+          if ($errors.Count -gt 0) {
+            Write-Host 'Verification errors:'
+            $errors | ForEach-Object { Write-Host "- $_" }
+            exit 1
+          }
+
+          Write-Host 'Verification passed.'
+
+      - name: Run autonomous non-install actions (bounded)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Invoke-GbeCommand {
+            param(
+              [Parameter(Mandatory = $true)][string]$Name,
+              [Parameter(Mandatory = $true)][string[]]$Args,
+              [int]$TimeoutSeconds = 600
+            )
+
+            function ConvertTo-StartProcessArguments {
+              param([string[]]$Arguments)
+
+              $quotedArguments = @()
+              foreach ($argument in $Arguments) {
+                if ($null -eq $argument) {
+                  $quotedArguments += '""'
+                  continue
+                }
+
+                if ($argument -match '[\s"]') {
+                  $quotedArguments += '"' + ($argument -replace '"', '\\"') + '"'
+                }
+                else {
+                  $quotedArguments += $argument
+                }
+              }
+
+              return $quotedArguments
+            }
+
+            $stdoutPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stdout.log"
+            $stderrPath = Join-Path $env:RUNNER_TEMP "gbe-$Name-stderr.log"
+            $invocationArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '.\Install-GalaxyBookEnabler.ps1') + $Args
+            $escapedInvocationArgs = ConvertTo-StartProcessArguments -Arguments $invocationArgs
+
+            Write-Host "Running '$Name' with timeout ${TimeoutSeconds}s..."
+            $process = Start-Process -FilePath 'pwsh' -ArgumentList $escapedInvocationArgs -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              Write-Host "--- $Name STDOUT (tail) ---"
+              if (Test-Path $stdoutPath) { Get-Content $stdoutPath -Tail 120 }
+              Write-Host "--- $Name STDERR (tail) ---"
+              if (Test-Path $stderrPath) { Get-Content $stderrPath -Tail 120 }
+              throw "Autonomous command '$Name' timed out after $TimeoutSeconds seconds."
+            }
+
+            if ($process.ExitCode -ne 0) {
+              Write-Host "--- $Name STDOUT (tail) ---"
+              if (Test-Path $stdoutPath) { Get-Content $stdoutPath -Tail 120 }
+              Write-Host "--- $Name STDERR (tail) ---"
+              if (Test-Path $stderrPath) { Get-Content $stderrPath -Tail 120 }
+              throw "Autonomous command '$Name' failed with exit code $($process.ExitCode)."
+            }
+
+            Write-Host "✓ '$Name' completed successfully."
+          }
+
+          Invoke-GbeCommand -Name 'UpdateSettings' -Args @(
+            '-TestMode',
+            '-FullyAutonomous',
+            '-AutonomousAction', 'UpdateSettings',
+            '-AutonomousSsseStrategy', 'Stable',
+            '-DebugOutput'
+          )
+
+          Invoke-GbeCommand -Name 'UpgradeSSE' -Args @(
+            '-TestMode',
+            '-FullyAutonomous',
+            '-AutonomousAction', 'UpgradeSSE',
+            '-DebugOutput'
+          )
+
+          Invoke-GbeCommand -Name 'UninstallAll' -Args @(
+            '-TestMode',
+            '-FullyAutonomous',
+            '-AutonomousAction', 'UninstallAll',
+            '-DebugOutput'
+          )
+
+          Invoke-GbeCommand -Name 'CustomPackageArrayRegression' -Args @(
+            '-TestMode',
+            '-FullyAutonomous',
+            '-AutonomousModel', '960XGL',
+            '-AutonomousPackageProfile', 'Custom',
+            '-AutonomousPackageNames', 'Samsung Account,Samsung Settings',
+            '-AutonomousInstallSsse:$false',
+            '-AutonomousConfirmPackages:$false',
+            '-DebugOutput'
+          )
