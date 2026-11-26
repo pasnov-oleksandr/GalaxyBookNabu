@@ -42,7 +42,7 @@ Installs in one line from GitHub.
 File Name      : Install-GalaxyBookNabu.ps1
 Prerequisite   : PowerShell 7.0 or later
 Requires Admin : Yes
-Version        : 1.0.0
+Version        : 1.0.1
 Repository     : https://github.com/pasnov-oleksandr/GalaxyBookNabu
 #>
 param(
@@ -496,7 +496,7 @@ if ((-not $script:IsConfigurationOnly) -and ((-not $isAdmin) -or $relaunchInClas
     exit $elevatedProcess.ExitCode
 }
 # VERSION CONSTANT
-$SCRIPT_VERSION = "1.0.0"
+$SCRIPT_VERSION = "1.0.1"
 $GITHUB_REPO = "pasnov-oleksandr/GalaxyBookNabu"
 $UPDATE_CHECK_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
 $LATEST_SSSE_VERSION = "8.0.5.0"
@@ -6616,7 +6616,7 @@ try {
     foreach ($service in $servicesToRestart) {
         try {
             Write-Log "Attempting to restart: $($service.Name) ($($service.Status))"
-            Restart-Service -Name $service.Name -Force -ErrorAction Stop
+            Restart-Service -Name $service.Name -Force -ErrorAction SilentlyContinue
             $updatedService = Get-Service -Name $service.Name -ErrorAction SilentlyContinue
             if ($updatedService) {
                 Write-Log "Success: $($service.Name) is now $($updatedService.Status)" -Level SUCCESS
