@@ -45,10 +45,23 @@ On Xiaomi Pad 5 (`nabu`) running Windows on ARM, standard x64 scripts fail due t
 - **Required Files:** `Install-GalaxyBookNabu.ps1` and `AllInNabu.zip` (containing `SysIdStub.dll`) in the same folder
 - **Privileges:** Administrator privileges
 - **Network:** Active Internet connection
+- **System & Store Updates:** Before running the installer, install all pending **Windows Update** patches and update all built-in apps in **Microsoft Store** (`Downloads -> Get updates`, especially **App Installer** / `winget`)
 
 ---
 
 ## Quick Start
+
+> **Important Before Starting:** Make sure **Windows Update** and all **Microsoft Store** app updates (`Downloads -> Get updates`) are fully installed and **Developer Mode** (`Settings -> System -> For developers -> Developer Mode`) is enabled.
+
+### Option A: One-Line Remote Execution (Recommended)
+
+Place `AllInNabu.zip` in `C:\Toolbox\AllInNabu.zip` (or in your current working directory), open **PowerShell 7 (`pwsh`)** as Administrator, and run:
+
+```powershell
+irm https://raw.githubusercontent.com/pasnov-oleksandr/GalaxyBookNabu/main/Install-GalaxyBookNabu.ps1 | iex
+```
+
+### Option B: Local Execution
 
 Download `Install-GalaxyBookNabu.ps1` and `AllInNabu.zip` into the same folder (e.g., `C:\Toolbox`), then run locally from PowerShell:
 
